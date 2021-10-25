@@ -13,6 +13,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
 
+//import router
+const authRouter = require("./routes/auth");
+
+//user the routes
+app.use("/api/auth", authRouter);
+
 //connection to db
 mongoose
   .connect(process.env.CONNECTION_URI, {
