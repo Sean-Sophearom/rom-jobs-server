@@ -1,2 +1,5 @@
 /node_modules
 .env
+/file.txt
+/app/jobtemplate.js
+/app/onetime.js

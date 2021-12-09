@@ -31,4 +31,13 @@ User.findByName = async (name, callback) => {
   }
 };
 
+User.updatePassword = async (user_id, newPassword, callback) => {
+  try {
+    const [result] = await sql.execute(`UPDATE user SET password = ? WHERE user_id = ?`, [newPassword, user_id]);
+    callback(null, result);
+  } catch (err) {
+    callback(err, null);
+  }
+};
+
 module.exports = User;

@@ -56,3 +56,16 @@ exports.login = (req, res) => {
     }
   });
 };
+
+exports.updatePassword = async (req, res) => {
+  const { password } = req.body;
+  const { user_id } = req.user;
+  if (!password) return res.status(400).json({ message: "New password cannot be empty." });
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  User.updatePassword(user_id, hashedPassword, (err, data) => {
+    if (err) return res.status(500).json(err);
+    res.status(200).json({ message: "Password updated" });
+  });
+};
