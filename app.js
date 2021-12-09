@@ -1,32 +1,26 @@
+//imports
 require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
-const mongoose = require("mongoose");
 
-// initialize some stuffs
+//initialize the app
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// just some bodyparser that I dont fully understand yet
+//middleware for parsing req.body
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
+
+//cors
 app.use(cors());
 
-//import router
-const authRouter = require("./routes/auth");
+//import routes
+const userRouter = require("./app/routes/user.routes");
+const jobRouter = require("./app/routes/job.routes");
 
-//user the routes
-app.use("/api/auth", authRouter);
+//use routes
+app.use("/api/auth", userRouter);
+app.use("/api/job", jobRouter);
 
-//connection to db
-mongoose
-  .connect(process.env.CONNECTION_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    console.log("mongoose connected successfully");
-    app.listen(PORT, () => console.log("server listening on port " + PORT));
-  })
-  .catch((err) => console.error(err));
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => console.log(`server listening on port ${PORT}`));
