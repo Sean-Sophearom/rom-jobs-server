@@ -24,7 +24,11 @@ exports.register = (req, res) => {
       User.create(user, (err, data) => {
         if (err) return res.status(400).json({ message: err.message });
         //removing the password so we don't send it back
-        res.status(201).json({ ...data, password: undefined });
+        const dataToSendBack = { ...data, password: undefined };
+
+        //create jwt token
+        const token = jwt.sign(dataToSendBack, process.env.JWT_SECRET);
+        res.status(201).json({ ...dataToSendBack, token });
       });
     } else {
       return res.status(500).json({ message: "Internal Server Error." });
@@ -58,14 +62,41 @@ exports.login = (req, res) => {
 };
 
 exports.updatePassword = async (req, res) => {
+  //get new password from req.body
   const { password } = req.body;
-  const { user_id } = req.user;
   if (!password) return res.status(400).json({ message: "New password cannot be empty." });
 
+  //get user id from jsonwebtoken
+  const { user_id } = req.user;
+
+  //hash
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  //update
   User.updatePassword(user_id, hashedPassword, (err, data) => {
     if (err) return res.status(500).json(err);
     res.status(200).json({ message: "Password updated" });
+  });
+};
+
+exports.saveProfileInfo = (req, res) => {
+  const { profession, email, date_of_birth } = req.body;
+
+  if (!profession || !email || !date_of_birth) return res.status(400).json({ message: "Please provide enough data." });
+
+  const options = { ...req.body, user_id: req.user.user_id };
+
+  User.saveProfileInfo(options, (err, data) => {
+    if (err) return res.status(400).json(err);
+    res.status(200).json({ message: "Successfully saved profile info." });
+  });
+};
+
+exports.findProfileInfo = (req, res) => {
+  const { user_id } = req.user;
+
+  User.findProfileInfo(user_id, (err, data) => {
+    if (err) return res.status(400).json(err);
+    res.status(200).json(data);
   });
 };

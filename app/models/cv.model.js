@@ -17,21 +17,8 @@ CV.create = async (cv, callback) => {
   const user_id = cv.user_id;
 
   //START OF USER INFO QUERY CONSTRUCTION
-  const {
-    first_name,
-    last_name,
-    contact_number,
-    email,
-    date_of_birth,
-    job_title,
-    job_level,
-    industry,
-    address,
-    city,
-    country,
-    github,
-    description,
-  } = cv.user_info;
+  const { first_name, last_name, contact_number, email, date_of_birth, job_title, job_level, industry, address, city, country, github, description } =
+    cv.user_info;
   const user_info_values = [
     first_name,
     last_name,
@@ -57,22 +44,19 @@ CV.create = async (cv, callback) => {
 
   //START OF WORK EXPERIENCE QUERY CONSTRUCTION
   if (cv.work_exp?.length >= 1) {
-    work_exp_values = cv.work_exp.map(
-      ({ job_title, job_level, company, type_of_exp, city, country, start_date, end_date, description }) => [
-        job_title,
-        job_level,
-        company,
-        type_of_exp,
-        city,
-        country,
-        start_date,
-        end_date,
-        description,
-        user_id,
-      ]
-    );
-    work_exp_query =
-      "INSERT INTO work_exp (job_title, job_level, company, type_of_exp, city, country, start_date, end_date, description, user_id) VALUES ?";
+    work_exp_values = cv.work_exp.map(({ job_title, job_level, company, type_of_exp, city, country, start_date, end_date, description }) => [
+      job_title,
+      job_level,
+      company,
+      type_of_exp,
+      city,
+      country,
+      start_date,
+      end_date,
+      description,
+      user_id,
+    ]);
+    work_exp_query = "INSERT INTO work_exp (job_title, job_level, company, type_of_exp, city, country, start_date, end_date, description, user_id) VALUES ?";
   }
   //END OF WORK EXPERIENCE QUERY CONSTRUCTION
 
@@ -117,14 +101,7 @@ CV.create = async (cv, callback) => {
 
   //START OF REFERENCE QUERY CONSTRUCTION
   if (cv.reference?.length >= 1) {
-    reference_values = cv.reference.map(({ name, position, company, contact_number, email }) => [
-      name,
-      position,
-      company,
-      contact_number,
-      email,
-      user_id,
-    ]);
+    reference_values = cv.reference.map(({ name, position, company, contact_number, email }) => [name, position, company, contact_number, email, user_id]);
     reference_query = "INSERT INTO reference (name, position, company, contact_number, email, user_id) VALUES ?";
   }
   //END OF REFERENCE QUERY CONSTRUCTION

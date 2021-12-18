@@ -23,7 +23,6 @@ exports.getAllJobs = async (req, res) => {
   //START OF PARSE REQ.HEADERS.AUTH
   //parse req.headers.auth to get user_id cause its optional
   //why get user_id? to check whether each job we fetch is their favorite or not.
-  //using let cause we'll have to remove the BEARER part later
   const token = req?.header("Authorization")?.split(" ")[1];
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
@@ -95,18 +94,8 @@ exports.removeFav = (req, res) => {
 
 exports.findByFav = (req, res) => {
   const user_id = req.user.user_id;
-  const page = req.query.page || 0;
 
-  //values of job per page
-  const JOB_PER_PAGE = 6;
-
-  //multiply page by num_job_per_page to get offset
-  const offset = page * JOB_PER_PAGE;
-
-  //check if offset isNan meaning the user provided a page number query that is actually a string
-  if (isNaN(offset)) return res.status(400).json({ message: "Invalid page number" });
-
-  Job.findByFav(user_id, JOB_PER_PAGE, offset, (err, data) => {
+  Job.findByFav(user_id, (err, data) => {
     if (err) return res.status(500).json(err);
     res.status(200).json(data);
   });

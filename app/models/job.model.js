@@ -48,13 +48,16 @@ Job.create = async (newJob, callback) => {
     // why? because it's a list and we need to store each of them in its own seperate table.
     const tables = { tags: [], responsibilities: [], requirements: [] };
     const tableName = ["tags", "responsibilities", "requirements"];
+    let error = null;
     tableName.forEach((item) => {
-      if (!newJob[item]) {
-        callback({ message: `${item} cannot be empty!` });
+      if (newJob[item].length === 0) {
+        error = item;
       } else {
         tables[item] = reformat(newJob[item], rows.insertId);
       }
     });
+
+    if (error) return callback({ message: `${item} cannot be empty.` }, null);
 
     // insert the three array into its own table
     const queryOne = sql.query("INSERT INTO tag (value, job_id) VALUES ?", [tables.tags]);
@@ -62,7 +65,7 @@ Job.create = async (newJob, callback) => {
     const queryThree = sql.query("INSERT INTO responsibility (value, job_id) VALUES ?", [tables.responsibilities]);
 
     // this is to run the three query in parallel
-    await Promise.all([queryOne, queryTwo, queryThree]).catch((err) => callback(err, null));
+    await Promise.all([queryOne, queryTwo, queryThree]);
 
     // return the job back with the job_id
     callback(null, { ...newJob, job_id: rows.insertId });
@@ -151,7 +154,7 @@ Job.find = async (offset, limit, options, keyword, user_id, callback) => {
 
 Job.findById = async ({ job_id, user_id }, callback) => {
   // helper function to select first element and also attach moreJobs to job
-  const reformat = (job, moreJobs, isFav) => ({ ...job[0], moreJobs, isFavorite: isFav.length === 0 ? false : true });
+  const reformat = (job, moreJobs, isFav, applied) => ({ ...job[0], moreJobs, isFavorite: isFav, applied });
 
   const mainQuery = "SELECT * FROM job where job_id = ? LIMIT 1";
   const tagQuery = "SELECT JSON_ARRAYAGG(value) as tags, job_id FROM tag GROUP BY job_id";
@@ -181,14 +184,26 @@ Job.findById = async ({ job_id, user_id }, callback) => {
     if (user_id) {
       const favQuery = "SELECT * FROM favorite WHERE user_id = ? AND job_id = ?";
       isFav = await sql.execute(favQuery, [user_id, job_id]);
-      isFav = isFav[0];
+      isFav = isFav[0].length > 0;
+    } else {
+      isFav = false;
+    }
+
+    //find if user has applied to job
+    let applied = [];
+    if (user_id) {
+      const appliedQuery = "SELECT * FROM application WHERE employee_id = ? AND job_id = ?";
+      applied = await sql.execute(appliedQuery, [user_id, job_id]);
+      applied = applied[0].length > 0;
+    } else {
+      applied = false;
     }
 
     // call reformat on job to do three things
     // 1. to select the 0 indexed element because job is in format [{job}]
     // 2. attach moreJobs to the job.
-    // 3. check if job is user_fav
-    callback(null, reformat(job, moreJobs, isFav));
+    // 3. check if job is user_fav and user has applied
+    callback(null, reformat(job, moreJobs, isFav, applied));
   } catch (err) {
     callback(err, null);
   }
@@ -214,13 +229,14 @@ Job.removeFav = async (user_id, job_id, callback) => {
   }
 };
 
-Job.findByFav = async (user_id, limit, offset, callback) => {
+Job.findByFav = async (user_id, callback) => {
+  const addFavToAll = (jobs) => jobs.map((job) => ({ ...job, favorite: true }));
   try {
-    const favJobIdsQuery = "SELECT JSON_ARRAYAGG(job_id) AS job_ids FROM (SELECT * FROM favorite WHERE user_id = ? ORDER BY job_id LIMIT ? OFFSET ?) t1;";
-    const [[{ job_ids: favJobIds }]] = await sql.execute(favJobIdsQuery, [user_id, limit, offset]);
+    const favJobIdsQuery = "SELECT JSON_ARRAYAGG(job_id) AS job_ids FROM (SELECT * FROM favorite WHERE user_id = ?) t1;";
+    const [[{ job_ids: favJobIds }]] = await sql.execute(favJobIdsQuery, [user_id]);
     const jobsQuery = `SELECT * FROM (SELECT name, job_type, location, salary, job_id, img, industry, level, category FROM job WHERE job_id IN (${favJobIds})) t1 LEFT JOIN (SELECT JSON_ARRAYAGG(value) AS tags, job_id FROM tag GROUP BY job_id) t2 ON t1.job_id = t2.job_id;`;
     const [jobs] = await sql.execute(jobsQuery);
-    callback(null, jobs);
+    callback(null, addFavToAll(jobs));
   } catch (err) {
     callback(err, null);
   }
@@ -228,9 +244,30 @@ Job.findByFav = async (user_id, limit, offset, callback) => {
 
 Job.findByUser = async (user_id, callback) => {
   try {
-    const query = `SELECT * FROM (SELECT JSON_ARRAYAGG(tag.value) as 'tags', tag.job_id from tag group by tag.job_id) t1 RIGHT JOIN (SELECT name, job_type, location, salary, job_id, img, industry FROM job WHERE user_id = ?) t2 on t1.job_id = t2.job_id`;
-    const [jobs] = await sql.execute(query, [user_id]);
-    callback(null, jobs);
+    const [applications] = await sql.execute("SELECT * FROM application WHERE employer_id = ?;", [user_id]);
+    const [jobs] = await sql.execute("SELECT name, salary, job_id FROM job WHERE user_id = ?;", [user_id]);
+
+    //count applications and group by statuses
+    const count = {};
+    applications.forEach((app) => {
+      if (!count[app?.job_id]) {
+        count[app?.job_id] = {};
+        count[app?.job_id][app?.status] = 1;
+        count[app?.job_id].appCount = 1;
+      } else {
+        count[app?.job_id][app?.status]++;
+        count[app?.job_id].appCount++;
+      }
+    });
+
+    //loop through count and attach it to jobs with corresponding ids.
+    const keys = Object.keys(count);
+    let updatedJobs = [...jobs];
+    keys.forEach((key) => {
+      updatedJobs = updatedJobs.map((item) => (item.job_id == key ? { ...item, ...count[key] } : item));
+    });
+
+    callback(null, updatedJobs);
   } catch (err) {
     callback(err, null);
   }
