@@ -76,4 +76,16 @@ User.findProfileInfo = async (user_id, callback) => {
   }
 };
 
+User.getStats = async (callback) => {
+  try {
+    const [jobs] = await sql.execute("SELECT COUNT(*) AS jobs FROM job;");
+    const [employee] = await sql.execute("SELECT COUNT(*) AS employee FROM user WHERE acc_type = 'employee';");
+    const [employer] = await sql.execute("SELECT COUNT(*) AS employer FROM user WHERE acc_type = 'employer';");
+    const stats = { ...jobs[0], ...employee[0], ...employer[0] };
+    callback(null, stats);
+  } catch (err) {
+    callback(err, null);
+  }
+};
+
 module.exports = User;

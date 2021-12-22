@@ -100,3 +100,10 @@ exports.findProfileInfo = (req, res) => {
     res.status(200).json(data);
   });
 };
+
+exports.getStats = (req, res) => {
+  User.getStats((err, data) => {
+    if (err) return res.status(500).json(err);
+    res.status(200).json(data);
+  });
+};

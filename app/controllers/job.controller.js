@@ -33,8 +33,8 @@ exports.getAllJobs = async (req, res) => {
   //END OF PARSE REQ.HEADERS.AUTH
 
   //destructure query params
-  const { level, industry, category, job_type, location, keyword } = req.query;
-  const options = { level, industry, category, job_type, location };
+  const { level, industry, category, job_type, location, keyword, sort } = req.query;
+  const options = { level, industry, category, job_type, location, sort };
 
   //values of job per page
   const JOB_PER_PAGE = 6;

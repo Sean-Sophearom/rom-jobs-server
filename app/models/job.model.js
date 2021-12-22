@@ -88,6 +88,10 @@ Job.find = async (offset, limit, options, keyword, user_id, callback) => {
     return updatedJobs;
   };
 
+  //get sort from options and remove it
+  const sort = options.sort;
+  delete options.sort;
+
   //helper function to check if a given object is empty
   const isObjEmpty = (obj) => Object.keys(obj).length === 0;
 
@@ -101,8 +105,13 @@ Job.find = async (offset, limit, options, keyword, user_id, callback) => {
   // ORDER BY t2.job_id
   // LIMIT ${limit}
   // OFFSET ${offset};
-  const queryPartOne = `SELECT * FROM (SELECT JSON_ARRAYAGG(tag.value) as 'tags', tag.job_id from tag group by tag.job_id) t1 RIGHT JOIN (SELECT name, job_type, location, salary, job_id, img, industry, level, category FROM job) t2 on t1.job_id = t2.job_id`;
-  const queryPartTwo = `ORDER BY t2.job_id LIMIT ${limit} OFFSET ${offset}`;
+
+  let sortBy = "";
+  if (sort === "Date") sortBy = "date_added DESC, job_id";
+  if (sort === "Salary") sortBy = "LENGTH(salary) DESC, job_id";
+
+  const queryPartOne = `SELECT * FROM (SELECT JSON_ARRAYAGG(tag.value) as 'tags', tag.job_id from tag group by tag.job_id) t1 RIGHT JOIN (SELECT name, job_type, location, salary, job_id, img, industry, level, category, date_added, status FROM job`;
+  const queryPartTwo = `ORDER BY ${sortBy || "job_id"} LIMIT ${limit} OFFSET ${offset}) t2 on t1.job_id = t2.job_id`;
   let mainQuery = "";
   let condition = "WHERE ";
 
@@ -176,7 +185,7 @@ Job.findById = async ({ job_id, user_id }, callback) => {
     //I know that using ORDER BY RAND() can be slow and resource consuming
     //but since our table will have at most less than 1k jobs we should be fine.
     //I mean the differences between this query and an efficient would be miniscule at this scale.
-    const secondQuery = `SELECT * FROM (SELECT JSON_ARRAYAGG(tag.value) as 'tags', tag.job_id from tag group by tag.job_id) t1 RIGHT JOIN (SELECT name, job_type, location, salary, job_id, img, industry FROM job) t2 on t1.job_id = t2.job_id ORDER BY RAND() LIMIT 9;`;
+    const secondQuery = `SELECT * FROM (SELECT JSON_ARRAYAGG(tag.value) as 'tags', tag.job_id from tag group by tag.job_id) t1 RIGHT JOIN (SELECT name, job_type, location, salary, job_id, img, industry, date_added, status FROM job) t2 on t1.job_id = t2.job_id ORDER BY RAND() LIMIT 9;`;
     const [moreJobs] = await sql.execute(secondQuery);
 
     //find if job is user fav or not
@@ -234,7 +243,7 @@ Job.findByFav = async (user_id, callback) => {
   try {
     const favJobIdsQuery = "SELECT JSON_ARRAYAGG(job_id) AS job_ids FROM (SELECT * FROM favorite WHERE user_id = ?) t1;";
     const [[{ job_ids: favJobIds }]] = await sql.execute(favJobIdsQuery, [user_id]);
-    const jobsQuery = `SELECT * FROM (SELECT name, job_type, location, salary, job_id, img, industry, level, category FROM job WHERE job_id IN (${favJobIds})) t1 LEFT JOIN (SELECT JSON_ARRAYAGG(value) AS tags, job_id FROM tag GROUP BY job_id) t2 ON t1.job_id = t2.job_id;`;
+    const jobsQuery = `SELECT * FROM (SELECT name, job_type, location, salary, job_id, img, industry, level, category, date_added, status FROM job WHERE job_id IN (${favJobIds})) t1 LEFT JOIN (SELECT JSON_ARRAYAGG(value) AS tags, job_id FROM tag GROUP BY job_id) t2 ON t1.job_id = t2.job_id;`;
     const [jobs] = await sql.execute(jobsQuery);
     callback(null, addFavToAll(jobs));
   } catch (err) {
@@ -245,7 +254,7 @@ Job.findByFav = async (user_id, callback) => {
 Job.findByUser = async (user_id, callback) => {
   try {
     const [applications] = await sql.execute("SELECT * FROM application WHERE employer_id = ?;", [user_id]);
-    const [jobs] = await sql.execute("SELECT name, salary, job_id FROM job WHERE user_id = ?;", [user_id]);
+    const [jobs] = await sql.execute("SELECT name, salary, date_added, status, job_id FROM job WHERE user_id = ? limit 10;", [user_id]);
 
     //count applications and group by statuses
     const count = {};

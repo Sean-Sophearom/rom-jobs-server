@@ -7,6 +7,7 @@ const verifyToken = require("../middlewares/verifyToken");
 //login and register no need token
 router.post("/auth/register", user.register);
 router.post("/auth/login", user.login);
+router.get("/stats", user.getStats);
 
 router.use(verifyToken);
 
