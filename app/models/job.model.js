@@ -282,4 +282,17 @@ Job.findByUser = async (user_id, callback) => {
   }
 };
 
+Job.stopHiring = async (user_id, job_id, callback) => {
+  try {
+    const [res] = await sql.execute("SELECT job_id, user_id FROM job WHERE job_id = ?", [job_id]);
+
+    if (res[0].user_id !== user_id) callback({ message: "You are not authorized to update this job's status.", status: 401 }, null);
+
+    const [data] = await sql.execute(`UPDATE job SET status = 'Closed' WHERE job_id = ${sql.escape(job_id)};`);
+    callback(null, { message: "Successfully closed." });
+  } catch (err) {
+    callback(err, null);
+  }
+};
+
 module.exports = Job;

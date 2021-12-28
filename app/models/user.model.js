@@ -88,4 +88,14 @@ User.getStats = async (callback) => {
   }
 };
 
+User.addMsg = async ({ text, name, email }, callback) => {
+  name = name || "";
+  try {
+    const [res] = await sql.execute("INSERT INTO message (name, email, text) VALUES (?, ?, ?)", [name, email, text]);
+    callback(null, res);
+  } catch (err) {
+    callback(err, null);
+  }
+};
+
 module.exports = User;

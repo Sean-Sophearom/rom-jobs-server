@@ -9,6 +9,8 @@ router.post("/auth/register", user.register);
 router.post("/auth/login", user.login);
 router.get("/stats", user.getStats);
 
+router.post("/message", user.addMsg);
+
 router.use(verifyToken);
 
 //update pw need token to get user_id as well as confirm the user.

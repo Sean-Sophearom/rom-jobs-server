@@ -108,3 +108,15 @@ exports.findByUser = (req, res) => {
     res.status(200).json(data);
   });
 };
+
+exports.stopHiring = (req, res) => {
+  const user_id = req.user.user_id;
+  const job_id = req.params.id;
+
+  if (isNaN(job_id)) return res.status(400).json({ message: "Invalid job id." });
+
+  Job.stopHiring(user_id, job_id, (err, data) => {
+    if (err) return res.status(err.status || 500).json(err);
+    res.status(200).json(data);
+  });
+};

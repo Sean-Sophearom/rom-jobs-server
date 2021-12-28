@@ -107,3 +107,14 @@ exports.getStats = (req, res) => {
     res.status(200).json(data);
   });
 };
+
+exports.addMsg = (req, res) => {
+  const { text, email, name } = req.body;
+
+  if (!text || !email) return res.status(422).json({ message: "Please provide email and message." });
+
+  User.addMsg({ text, email, name }, (err) => {
+    if (err) return res.status(500).json(err);
+    res.status(200).json({ message: "Your message has been sent successfully." });
+  });
+};

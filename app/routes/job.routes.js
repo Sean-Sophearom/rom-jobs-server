@@ -11,6 +11,7 @@ router.get("/get/:id", job.findOne);
 router.use(verifyToken);
 
 router.post("/", job.createJob);
+router.patch("/stop/:id", job.stopHiring);
 
 router.post("/addFav/:id", job.addFav);
 router.post("/removeFav/:id", job.removeFav);
